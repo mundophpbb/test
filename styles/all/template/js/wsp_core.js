@@ -217,21 +217,48 @@
         bindGlobalEvents: function() {
             var self = this, $ = this.$;
 
-            // Toolbar - Eventos de ferramentas e menus
+            // 1. ABA: ARQUIVO
             $('body').off('click', '#btn-tb-new-project').on('click', '#btn-tb-new-project', () => self.project.create());
             $('body').off('click', '#menu-open-project').on('click', '#menu-open-project', () => self.project.openModal());
             $('body').off('click', '#btn-tb-save').on('click', '#btn-tb-save', (e) => { e.preventDefault(); self.file.save(); });
             $('body').off('click', '#btn-tb-gist').on('click', '#btn-tb-gist', () => self.tools.exportGist());
-            $('body').off('click', '#btn-tb-purge-cache').on('click', '#btn-tb-purge-cache', () => self.tools.purgeCache());
 
-            // Seleção de Projeto no Modal
-            $('body').off('click', '.project-card').on('click', '.project-card', function() {
-                var id = $(this).attr('data-id'), name = $(this).attr('data-name');
-                $('.wsp-modal-overlay').fadeOut(200);
-                self.project.loadSidebar(id, name);
+            // 2. ABA: PROJETO
+            $('body').off('click', '#btn-tb-new-folder').on('click', '#btn-tb-new-folder', function() {
+                self.ui.prompt(self.config.lang.prompt_file, "", (name) => {
+                    self.api(self.config.addFileUrl, { name: name, type: 'folder', project_id: self.state.activeProjectId }, () => self.project.loadSidebar(self.state.activeProjectId, name));
+                });
             });
 
-            // Outros modais estáticos (Search, Diff, Skeleton, etc)
+            $('body').off('click', '#btn-tb-new-file').on('click', '#btn-tb-new-file', function() {
+                self.ui.prompt(self.config.lang.prompt_file, "novo_arquivo.php", (name) => {
+                    self.api(self.config.addFileUrl, { name: name, type: 'file', project_id: self.state.activeProjectId }, () => self.project.loadSidebar(self.state.activeProjectId, name));
+                });
+            });
+
+            $('body').off('click', '#btn-tb-download-zip').on('click', '#btn-tb-download-zip', function() {
+                if (!self.state.activeProjectId) return self.ui.notify('Selecione um projeto', 'error');
+                window.location.href = self.config.zipUrl + '&project_id=' + self.state.activeProjectId;
+            });
+
+            $('body').off('click', '#btn-tb-changelog').on('click', '#btn-tb-changelog', function() {
+                if (!self.state.activeProjectId) return self.ui.notify('Selecione um projeto', 'error');
+                self.ui.notify(self.config.lang.processing, "info");
+                self.api(self.config.changelogUrl, { project_id: self.state.activeProjectId }, (r) => self.ui.notify("Changelog pronto!", "success"));
+            });
+
+            // 3. ABA: FERRAMENTAS & VIEW
+            $('body').off('click', '#btn-tb-purge-cache').on('click', '#btn-tb-purge-cache', () => self.tools.purgeCache());
+            
+            $('body').off('click', '#btn-tb-fullscreen').on('click', '#btn-tb-fullscreen', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            });
+
+            // 4. MODAIS ESTÁTICOS (Unificados)
             var staticModals = {
                 '#btn-tb-search': '#wsp-search-modal',
                 '#btn-tb-diff': '#wsp-diff-modal',
@@ -239,20 +266,37 @@
                 '#btn-tb-theme': '#wsp-theme-modal',
                 '#btn-tb-shortcuts': '#wsp-shortcuts-modal'
             };
+
             $.each(staticModals, function(btn, mod) {
-                $('body').off('click', btn).on('click', btn, () => $(mod).css('display', 'flex').hide().fadeIn(200));
+                $('body').off('click', btn).on('click', btn, function(e) {
+                    e.preventDefault();
+                    $(mod).css('display', 'flex').hide().fadeIn(200);
+                });
             });
 
-            // Navegação: Arquivos e Pastas
+            // 5. NAVEGAÇÃO E INTERFACE
             $('body').off('click', '.load-file').on('click', '.load-file', (e) => self.file.open($(e.currentTarget).attr('data-id')));
-            $('body').off('click', '.folder-title').on('click', '.folder-title', function() {
-                $(this).next('.folder-content').slideToggle(150);
-                $(this).find('i').toggleClass('fa-folder fa-folder-open');
+            
+            $('body').off('click', '#btn-toggle-log-menu, #btn-toggle-log').on('click', '#btn-toggle-log-menu, #btn-toggle-log', function() {
+                $('#wsp-log-console').toggleClass('expanded');
             });
+
+            // Fechar modais (Esc e botões)
+            $('body').off('click', '.close-modal, #wsp-modal-cancel').on('click', '.close-modal, #wsp-modal-cancel', () => $('.wsp-modal-overlay').fadeOut(150));
         },
 
-        api: function(url, data, cb) {
-            this.$.post(url, data, (r) => { if(r.success) cb(r); else this.ui.notify(r.error, 'error'); }, 'json');
+        api: function(url, data, cb, method = 'POST') {
+            this.$.ajax({
+                url: url,
+                type: method,
+                data: data,
+                dataType: 'json',
+                success: (r) => { 
+                    if(r.success) cb(r); 
+                    else this.ui.notify(r.error, 'error'); 
+                },
+                error: () => this.ui.notify("Erro na requisição (405 ou 500)", "error")
+            });
         },
 
         editor: {

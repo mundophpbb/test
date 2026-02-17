@@ -121,3 +121,21 @@
         </div>
     </div>
 </div>
+
+{# Modal para Seleção de Projetos (Adicionado) #}
+<div id="wsp-open-project-modal" class="wsp-modal-overlay">
+    <div class="wsp-modal-content" style="width: 500px;">
+        <div class="modal-header">
+            <span><i class="fa fa-folder-open"></i> {L_WSP_OPEN_PROJECT}</span>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="project-list-select" class="project-selection-list">
+                {# Injetado via AJAX pelo WSP.project.openModal #}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="wsp-btn wsp-btn-secondary close-modal">{L_WSP_CANCEL}</button>
+        </div>
+    </div>
+</div>

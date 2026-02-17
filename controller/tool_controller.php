@@ -4,8 +4,8 @@ namespace mundophpbb\workspace\controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
- * Mundo phpBB Workspace - Tool Controller (v2.9)
- * Responsável por: Busca, Substituição, Diff, Changelog, Cache, Duplicação, Gist, Skeleton e Export ZIP.
+ * Mundo phpBB Workspace - Tool Controller (v2.9.9)
+ * Responsável por: Busca, Substituição, Diff, Changelog, Cache, Duplicação, Gist, Skeleton, Export ZIP e Lista de Projetos.
  */
 class tool_controller
 {
@@ -100,17 +100,6 @@ class tool_controller
     }
 
     /**
-     * Limpeza de Cache nativa do phpBB.
-     */
-    public function purge_cache()
-    {
-        if (!$this->auth->acl_get('a_') && !$this->auth->acl_get('u_workspace_access')) return new JsonResponse(['success' => false]);
-        global $cache;
-        $cache->purge();
-        return new JsonResponse(['success' => true]);
-    }
-
-    /**
      * Duplicar registro de arquivo.
      */
     public function duplicate_file()
@@ -182,7 +171,7 @@ class tool_controller
     }
 
     /**
-     * NOVO: Exportar Projeto como ZIP.
+     * Exportar Projeto como ZIP.
      */
     public function export_project_zip($project_id = 0)
     {
@@ -208,7 +197,6 @@ class tool_controller
             while ($row = $this->db->sql_fetchrow($result)) {
                 $content = $row['file_content'];
 
-                // Decodifica Imagens Base64 para binário real no ZIP
                 if (strpos($content, 'data:image/') === 0) {
                     $base64_string = explode(',', $content)[1];
                     $content = base64_decode($base64_string);
@@ -257,4 +245,48 @@ class tool_controller
         }
         return new JsonResponse(['success' => true, 'file_id' => $file_id]);
     }
-}
+
+    /**
+     * Retorna lista de projetos em JSON para o Modal.
+     */
+    public function get_projects_json()
+    {
+        if (!$this->auth->acl_get('u_workspace_access')) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado.']);
+        }
+
+        $sql = 'SELECT project_id, project_name FROM ' . $this->table_prefix . 'workspace_projects 
+                WHERE user_id = ' . (int) $this->user->data['user_id'] . '
+                ORDER BY project_name ASC';
+        $result = $this->db->sql_query($sql);
+        
+        $projects = [];
+        while ($row = $this->db->sql_fetchrow($result)) {
+            $projects[] = [
+                'id'   => (int) $row['project_id'],
+                'name' => $row['project_name']
+            ];
+        }
+        $this->db->sql_freeresult($result);
+
+        return new JsonResponse(['success' => true, 'projects' => $projects]);
+    }
+
+    /**
+     * Limpeza de Cache nativa do phpBB.
+     */
+    public function purge_cache()
+    {
+        if (!$this->auth->acl_get('a_') && !$this->auth->acl_get('u_workspace_access')) {
+            return new JsonResponse(['success' => false, 'error' => 'Sem permissão.']);
+        }
+
+        global $cache; 
+        if (method_exists($cache, 'purge')) {
+            $cache->purge();
+            return new JsonResponse(['success' => true]);
+        }
+
+        return new JsonResponse(['success' => false, 'error' => 'Falha ao acessar cache.']);
+    }
+} // Chave final da classe agora no lugar certo.

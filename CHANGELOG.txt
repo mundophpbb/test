@@ -1,0 +1,2 @@
+1.2.1
+agora quando cria um projeto, ja aparece na sidebar

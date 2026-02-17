@@ -1,5 +1,5 @@
 # ==========================================================
-# Mundo phpBB Workspace - Rotas da IDE v2.9
+# Mundo phpBB Workspace - Rotas da IDE v2.9 (Corrigido)
 # ==========================================================
 
 # Página Principal da IDE
@@ -66,12 +66,11 @@ mundophpbb_workspace_replace_project:
     defaults: { _controller: mundophpbb.workspace.controller.tool_controller:replace_project }
     methods: [POST]
 
+# CORREÇÃO: Removido {project_id} do path porque o JS envia via POST data
 mundophpbb_workspace_generate_changelog:
-    path: /workspace/changelog/{project_id}
+    path: /workspace/changelog
     defaults: { _controller: mundophpbb.workspace.controller.tool_controller:generate_changelog }
     methods: [POST]
-    requirements:
-        project_id: \d+
 
 mundophpbb_workspace_purge_cache:
     path: /workspace/purge_cache
@@ -93,10 +92,8 @@ mundophpbb_workspace_skeleton:
     defaults: { _controller: mundophpbb.workspace.controller.tool_controller:generate_skeleton }
     methods: [POST]
 
-# Rota de Exportação ZIP (v2.9)
+# CORREÇÃO: Removido {project_id} do path para aceitar via query string (?project_id=X)
 mundophpbb_workspace_export_zip:
-    path: /workspace/export_zip/{project_id}
+    path: /workspace/export_zip
     defaults: { _controller: mundophpbb.workspace.controller.tool_controller:export_project_zip }
     methods: [GET]
-    requirements:
-        project_id: \d+
