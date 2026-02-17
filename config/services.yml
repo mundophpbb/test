@@ -1,0 +1,72 @@
+services:
+    # Main Controller: Gerencia a interface e o carregamento inicial
+    mundophpbb.workspace.controller.main_controller:
+        class: mundophpbb\workspace\controller\main_controller
+        arguments:
+            - '@controller.helper'
+            - '@template'
+            - '@dbal.conn'
+            - '%core.table_prefix%'
+            - '@request'
+            - '@user'
+            - '@auth'
+            - '%core.root_path%'
+        tags:
+            - { name: controller.service }
+
+    # Project Controller: CRUD de projetos e geração de ZIP
+    mundophpbb.workspace.controller.project_controller:
+        class: mundophpbb\workspace\controller\project_controller
+        arguments:
+            - '@controller.helper'
+            - '@dbal.conn'
+            - '%core.table_prefix%'
+            - '@request'
+            - '@user'
+            - '@auth'
+        tags:
+            - { name: controller.service }
+
+    # File Controller: Gestão de arquivos (Load, Save, Rename, Delete, Upload)
+    mundophpbb.workspace.controller.file_controller:
+        class: mundophpbb\workspace\controller\file_controller
+        arguments:
+            - '@controller.helper'
+            - '@template'
+            - '@dbal.conn'
+            - '%core.table_prefix%'
+            - '@request'
+            - '@user'
+            - '@auth'
+            - '@language'
+            - '%core.root_path%'
+        tags:
+            - { name: controller.service }
+
+    # Tool Controller: O "Hub" de inteligência (Diff, Search, Replace e Changelog)
+    mundophpbb.workspace.controller.tool_controller:
+        class: mundophpbb\workspace\controller\tool_controller
+        arguments:
+            - '@controller.helper'
+            - '@dbal.conn'
+            - '%core.table_prefix%'
+            - '@request'
+            - '@user'
+            - '@auth'
+            - '@language'
+            - '%core.root_path%'
+        tags:
+            - { name: controller.service }
+
+    # Listener: Injeção de assets e eventos globais
+    mundophpbb.workspace.listener:
+        class: mundophpbb\workspace\event\main_listener
+        arguments:
+            - '@controller.helper'
+            - '@template'
+            - '@user'
+            - '@auth'
+            - '@request'      # <-- Adicionado para detectar a rota e blindar o CSS
+            - '%core.root_path%'
+        tags:
+            - { name: event.listener }
