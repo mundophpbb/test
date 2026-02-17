@@ -1,0 +1,52 @@
+<div class="workspace-editor-container">
+    <div id="wsp-tabs-container" class="wsp-tabs-bar"></div>
+
+    <div class="editor-status-bar">
+        <span id="current-file"><i class="fa fa-code"></i> Selecione um arquivo</span>
+        <div class="editor-actions">
+            <button id="save-file" class="wsp-btn-save" style="display:none;">
+                <i class="fa fa-save"></i> {L_WSP_SAVE}
+            </button>
+        </div>
+    </div>
+
+    <div id="editor-wrapper">
+        <div id="editor"></div>
+
+        <div id="wsp-image-viewer" class="wsp-image-preview" style="display:none;">
+            <div class="image-canvas">
+                <img id="wsp-preview-img" src="" alt="Preview">
+            </div>
+            <div class="wsp-image-info" id="wsp-preview-info"></div>
+        </div>
+
+        <div id="editor-loader" style="display:none;">
+            <div class="loader-content">
+                <i class="fa fa-refresh fa-spin"></i>
+                <span>Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="wsp-log-console" class="wsp-log-console">
+        <div class="log-header" id="btn-toggle-log">
+            <span><i class="fa fa-terminal"></i> Console de Saída</span>
+            <div class="log-actions">
+                <i class="fa fa-eraser" id="btn-clear-log" title="Limpar Log"></i>
+                <i class="fa fa-chevron-up" id="log-chevron"></i>
+            </div>
+        </div>
+        <div class="log-body" id="wsp-log-body">
+            <div class="log-entry system">-- IDE Mundo phpBB v2.8 Pronta --</div>
+        </div>
+    </div>
+
+    <div class="wsp-status-bar-bottom">
+        <div class="status-left">
+            <span id="wsp-status-mode">TEXT</span>
+        </div>
+        <div class="status-right">
+            <span id="wsp-status-position">Lin: 1, Col: 1</span>
+        </div>
+    </div>
+</div>

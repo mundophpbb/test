@@ -1,0 +1,88 @@
+{% INCLUDE 'overall_header.html' %}
+
+{# 1. Meta Tags Anti-Cache #}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
+{# 2. CSS da IDE #}
+<link href="{T_WSP_ASSETS}/theme/workspace.css?v={WSP_VERSION}" rel="stylesheet" type="text/css">
+
+<script>
+    /**
+     * MUNDO PHPBB WORKSPACE - CONFIGURAÇÃO GLOBAL (v2.9.2)
+     * Definido antes da inicialização para que o Core possa ler os dados.
+     */
+    window.wspVars = {
+        mainUrl:       '{{ U_WORKSPACE_MAIN|e("js") }}'.replace(/&amp;/g, '&'),
+        loadUrl:       '{{ U_WORKSPACE_LOAD|e("js") }}'.replace(/&amp;/g, '&'),
+        saveUrl:       '{{ U_WORKSPACE_SAVE|e("js") }}'.replace(/&amp;/g, '&'),
+        addUrl:        '{{ U_WORKSPACE_ADD|e("js") }}'.replace(/&amp;/g, '&'),
+        addFileUrl:    '{{ U_WORKSPACE_ADD_FILE|e("js") }}'.replace(/&amp;/g, '&'),
+        renameUrl:     '{{ U_WORKSPACE_RENAME|e("js") }}'.replace(/&amp;/g, '&'),
+        deleteFileUrl: '{{ U_WORKSPACE_DELETE_FILE|e("js") }}'.replace(/&amp;/g, '&'),
+        uploadUrl:     '{{ U_WORKSPACE_UPLOAD|e("js") }}'.replace(/&amp;/g, '&'),
+        duplicateUrl:  '{{ U_WORKSPACE_DUPLICATE|e("js") }}'.replace(/&amp;/g, '&'),
+        
+        diffUrl:       '{{ U_WORKSPACE_DIFF|e("js") }}'.replace(/&amp;/g, '&'),
+        searchUrl:     '{{ U_WORKSPACE_SEARCH|e("js") }}'.replace(/&amp;/g, '&'),
+        purgeCacheUrl: '{{ U_WORKSPACE_PURGE_CACHE|e("js") }}'.replace(/&amp;/g, '&'),
+        gistUrl:       '{{ U_WORKSPACE_EXPORT_GIST|e("js") }}'.replace(/&amp;/g, '&'),
+        skeletonUrl:   '{{ U_WORKSPACE_SKELETON|e("js") }}'.replace(/&amp;/g, '&'),
+        zipUrl:        '{{ U_WORKSPACE_EXPORT_ZIP|e("js") }}'.replace(/&amp;/g, '&'),
+
+        activeProjectId: '{ACTIVE_PROJECT_ID}' || null,
+
+        lang: {
+            loading:        '{LA_WSP_LOADING}',
+            saving:         '{LA_WSP_SAVING}',
+            saved:          '{LA_WSP_SAVED}',
+            processing:     '{LA_WSP_PROCESSING}',
+            prompt_name:    '{LA_WSP_PROMPT_PROJECT_NAME}',
+            prompt_file:    '{LA_WSP_PROMPT_FILE_NAME}',
+            confirm_delete: '{LA_WSP_CONFIRM_FILE_DELETE}',
+            welcome_msg:    '{LA_WSP_WELCOME_MSG}'
+        }
+    };
+</script>
+
+<div class="workspace-wrapper">
+    {% INCLUDE 'parts/workspace_toolbar.html' %}
+
+    <div class="workspace-main">
+        {% INCLUDE 'parts/workspace_sidebar.html' %}
+        {% INCLUDE 'parts/workspace_editor.html' %}
+    </div>
+</div>
+
+{# Modais e Inclusão de Scripts (wsp_core.js deve estar aqui dentro) #}
+{% INCLUDE 'parts/workspace_modals.html' %}
+{% INCLUDE 'parts/workspace_scripts.html' %}
+
+<script>
+    (function bootstrapIDE() {
+        // Captura o jQuery disponível no momento
+        var jQueryInstance = window.jQuery || window.$;
+        
+        if (jQueryInstance && window.WSP && !window.WSP_INITIALIZED) {
+            jQueryInstance(document).ready(function($) {
+                console.log("%c[WSP] Bootstrap: Dependências ok. Inicializando...", "color: #569cd6;");
+                try {
+                    window.WSP_INITIALIZED = true;
+                    $('body').addClass('wsp-active'); 
+                    
+                    // Inicializa garantindo que o WSP use este jQuery específico
+                    window.WSP.init();
+                } catch (e) {
+                    console.error("[WSP] Falha no WSP.init():", e);
+                    window.WSP_INITIALIZED = false;
+                }
+            });
+        } else if (!window.WSP_INITIALIZED) {
+            // Se o WSP ou jQuery ainda não existem, aguarda mais um pouco
+            setTimeout(bootstrapIDE, 50);
+        }
+    })();
+</script>
+
+{% INCLUDE 'overall_footer.html' %}
