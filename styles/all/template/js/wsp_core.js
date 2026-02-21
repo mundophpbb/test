@@ -1,313 +1,157 @@
 /**
- * Mundo phpBB Workspace - Core Modular
- * Versão: 2.9.9 - Restauração Completa, Hotkeys e Árvore Recursiva
+ * Mundo phpBB Workspace - Core & State
+ * Centraliza o estado global, configurações do editor e validações de segurança.
  */
-(function(window) {
+(function (window, $) {
     'use strict';
 
+    // Fallback de segurança para evitar quebras em páginas comuns do fórum
+    if (typeof window.wspVars === 'undefined' || !window.wspVars) {
+        window.wspVars = {
+            basePath: '',
+            allowedExt: '',
+            activeProjectId: 0,
+            lang: {
+                welcome_msg: 'Selecione um projeto para começar.',
+                select_file: 'Selecione um arquivo'
+            }
+        };
+    }
+
     window.WSP = {
-        state: {
-            activeProjectId: null,
-            activeFileId: null,
-            isDirty: false,
-            currentTheme: 'ace/theme/monokai'
+        activeFileId: null,
+        activeProjectId: null,
+        activeFolderPath: '', // Armazena a pasta selecionada na árvore
+        originalContent: "",
+        editor: null,
+        allowedExtensions: [],
+
+        // Mapa de linguagens do Ace Editor
+        modes: {
+            'php': 'ace/mode/php', 'js': 'ace/mode/javascript', 'ts': 'ace/mode/typescript',
+            'html': 'ace/mode/html', 'htm': 'ace/mode/html', 'css': 'ace/mode/css',
+            'json': 'ace/mode/json', 'xml': 'ace/mode/xml', 'yml': 'ace/mode/yaml',
+            'yaml': 'ace/mode/yaml', 'sql': 'ace/mode/sql', 'md': 'ace/mode/markdown',
+            'txt': 'ace/mode/text', 'twig': 'ace/mode/twig', 'htaccess': 'ace/mode/apache_conf'
         },
 
-        get $() { return window.jQuery || window.$; },
+        /**
+         * Inicializa o Editor ACE
+         */
+        initEditor: function () {
+            if (typeof window.ace === 'undefined') return false;
+            if (!document.getElementById('editor')) return false;
 
-        init: function() {
-            var $ = this.$;
-            if (!$) return;
+            // Se o editor já foi inicializado, não faz nada (evita duplicidade em refresh)
+            if (this.editor) return true;
 
-            this.config = window.wspVars || {};
-            this.state.activeProjectId = this.config.activeProjectId || null;
-
-            try {
-                this.editor.init();
-                this.ui.initModals();
-                this.bindGlobalEvents();
-                this.bindHotkeys(); // Ativa interceptação do teclado
-                
-                if (this.state.activeProjectId) this.project.renderTree();
-                
-                console.log('%c[WSP] IDE v2.9.9: Sistema Completo Online.', 'color: #28a745; font-weight: bold;');
-            } catch (e) {
-                console.error('[WSP] Erro na inicialização:', e);
+            // Configura caminhos internos do Ace
+            if (window.wspVars.basePath) {
+                ace.config.set("basePath", window.wspVars.basePath);
+                ace.config.set("modePath", window.wspVars.basePath);
+                ace.config.set("themePath", window.wspVars.basePath);
             }
-        },
 
-        // --- GESTÃO DE TECLAS (HOTKEYS) ---
-        bindHotkeys: function() {
+            this.editor = ace.edit("editor");
+            this.editor.setTheme("ace/theme/monokai");
+            this.editor.setOptions({
+                fontSize: "14px",
+                fontFamily: "Consolas, 'Courier New', monospace",
+                showPrintMargin: false,
+                displayIndentGuides: true,
+                highlightActiveLine: true,
+                behavioursEnabled: true,
+                wrap: true,
+                tabSize: 4,
+                useSoftTabs: true,
+                scrollPastEnd: 0.5,
+                readOnly: true // Começa travado até abrir um arquivo
+            });
+
+            this.editor.session.setUseWorker(false);
+
+            // Carrega whitelist do PHP
+            this.allowedExtensions = this.parseAllowedExtensions(window.wspVars.allowedExt);
+
+            // Sincroniza Projeto Ativo
+            this.activeProjectId = this.normalizeProjectId(window.wspVars.activeProjectId);
+
+            // Ajuste de tamanho automático
             var self = this;
-            this.$(window).off('keydown').on('keydown', function(e) {
-                // Ctrl + S para Salvar
-                if ((e.ctrlKey || e.metaKey) && e.which == 83) {
-                    e.preventDefault();
-                    self.file.save();
-                }
+            window.addEventListener('resize', function() {
+                if (self.editor) self.editor.resize();
             });
+
+            this.updateUIState();
+            return true;
         },
 
-        // --- MÓDULO DE PROJETO ---
-        project: {
-            create: function() {
-                var self = WSP;
-                self.ui.prompt(self.config.lang.prompt_name, '', function(name) {
-                    self.$.post(self.config.addUrl, { name: name }, function(r) {
-                        if(r.success) {
-                            self.ui.notify("Projeto Criado!", "success");
-                            self.project.loadSidebar(r.id, r.name);
-                        }
-                    }, 'json');
-                });
-            },
-
-            openModal: function() {
-                var self = WSP;
-                var $list = self.$('#project-list-select');
-                $list.html('<div style="text-align:center;padding:20px;"><i class="fa fa-refresh fa-spin fa-2x"></i></div>');
-                self.$('#wsp-open-project-modal').css('display', 'flex').hide().fadeIn(200);
-
-                self.$.get(self.config.mainUrl, function(data) {
-                    var $projects = self.$(data).find('.project-card-hidden');
-                    $list.empty();
-                    if ($projects.length === 0) {
-                        $list.html('<p style="padding:20px; color:#888;">Nenhum projeto encontrado.</p>');
-                    } else {
-                        $projects.each(function() {
-                            var id = self.$(this).attr('data-id');
-                            var name = self.$(this).attr('data-name');
-                            $list.append(`<div class="project-card" data-id="${id}" data-name="${name}">
-                                <i class="fa fa-folder"></i> <span>${name}</span></div>`);
-                        });
-                    }
-                });
-            },
-
-            loadSidebar: function(id, name) {
-                var self = WSP;
-                self.state.activeProjectId = id;
-                self.ui.setLoading(true);
-                self.$.get(self.config.mainUrl, { project_id: id }, function(data) {
-                    var $tempDiv = self.$('<div>').html(data);
-                    var newHtml = $tempDiv.find('#project-list').html();
-                    self.$('#project-list').html(newHtml || '<p>Projeto vazio.</p>');
-                    self.ui.updateProjectDisplay(name);
-                    self.project.renderTree();
-                    self.ui.setLoading(false);
-                });
-            },
-
-            renderTree: function() {
-                var $ = WSP.$;
-                $('.file-list').each(function() {
-                    var $list = $(this), files = [];
-                    $list.find('.file-item').each(function() {
-                        var $el = $(this), $link = $el.find('.load-file');
-                        files.push({
-                            id: $link.attr('data-id'),
-                            name: $link.find('.file-label').text().trim(),
-                            type: $link.attr('data-type'),
-                            html: $el[0].outerHTML
-                        });
-                    });
-
-                    if (files.length === 0) return;
-
-                    var structure = {};
-                    files.forEach(file => {
-                        var parts = file.name.split('/'), current = structure;
-                        parts.forEach((part, i) => {
-                            var isLast = (i === parts.length - 1);
-                            if (!current[part]) current[part] = isLast ? file : { _isDir: true, _children: {} };
-                            if (!isLast) current = current[part]._children;
-                        });
-                    });
-
-                    var buildHtml = function(obj, level = 0) {
-                        var html = '', keys = Object.keys(obj).sort((a, b) => (obj[b]._isDir || 0) - (obj[a]._isDir || 0));
-                        keys.forEach(key => {
-                            var item = obj[key], padding = level * 15;
-                            if (item._isDir) {
-                                html += `<li class="folder-item" style="padding-left:${padding}px">
-                                            <div class="folder-title"><i class="fa fa-folder"></i> ${key}</div>
-                                            <ul class="folder-content" style="display:none;">${buildHtml(item._children, level + 1)}</ul>
-                                         </li>`;
-                            } else { html += `<div class="tree-file-wrapper" style="padding-left:${padding}px">${item.html}</div>`; }
-                        });
-                        return html;
-                    };
-                    $list.html(buildHtml(structure));
-                });
-            }
+        /**
+         * Normaliza o ID do projeto para evitar conflitos de tipo (string vs int)
+         */
+        normalizeProjectId: function (value) {
+            if (!value || value === '0' || value === 0) return null;
+            return parseInt(value, 10);
         },
 
-        // --- MÓDULO DE ARQUIVO ---
-        file: {
-            open: function(fileId) {
-                var self = WSP;
-                self.ui.setLoading(true);
-                self.api(self.config.loadUrl, { file_id: fileId }, function(r) {
-                    self.editor.instance.setReadOnly(false);
-                    self.editor.instance.setValue(r.content, -1);
-                    self.state.activeFileId = fileId;
-                    self.ui.updateActiveFileUI(fileId, r.name, r.type);
-                    self.ui.setLoading(false);
-                });
-            },
-            save: function() {
-                var self = WSP;
-                if (!self.state.activeFileId) return self.ui.notify('Selecione um arquivo!', 'error');
+        parseAllowedExtensions: function (str) {
+            if (!str || typeof str !== 'string') return [];
+            return str.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
+        },
+
+        /**
+         * Validação de segurança no Frontend
+         */
+        isExtensionAllowed: function (filename) {
+            if (!filename) return false;
+            const name = filename.trim().toLowerCase();
+
+            // Arquivos técnicos sempre permitidos
+            if (name === '.placeholder' || name === '.htaccess' || name === 'changelog.txt') return true;
+
+            const parts = name.split('.');
+            if (parts.length === 1) return true; // Permite arquivos sem extensão (ex: LICENSE)
+
+            const ext = parts.pop();
+            return this.allowedExtensions.indexOf(ext) !== -1;
+        },
+
+        /**
+         * Gerencia o estado visual da Toolbar e do Editor
+         */
+        updateUIState: function () {
+            const hasProject = !!this.activeProjectId;
+            const hasFile = !!this.activeFileId;
+
+            const $toolbarActions = $('.actions-active');
+            const $saveBtn = $('#save-file');
+            const $bbcodeBtn = $('#copy-bbcode');
+            const $currentFileLabel = $('#current-file');
+
+            if (!hasProject) {
+                // Estado: Nada aberto
+                $toolbarActions.css({ opacity: '0.4', pointerEvents: 'none' });
+                if (this.editor) {
+                    this.editor.setReadOnly(true);
+                    this.editor.setValue(window.wspVars.lang.welcome_msg || "Selecione um projeto.", -1);
+                }
+                $saveBtn.hide();
+                $bbcodeBtn.hide();
+                $currentFileLabel.text(window.wspVars.lang.select_file || 'Selecione um arquivo');
+            } else {
+                // Estado: Projeto Ativo
+                $toolbarActions.css({ opacity: '1', pointerEvents: 'auto' });
                 
-                var content = self.editor.instance.getValue();
-                self.ui.setLoading(true);
-                self.api(self.config.saveUrl, { file_id: self.state.activeFileId, content: content }, function() {
-                    self.ui.notify('Arquivo salvo com sucesso!', 'success');
-                    self.state.isDirty = false;
-                    self.ui.setLoading(false);
-                });
-            }
-        },
-
-        // --- MÓDULO DE FERRAMENTAS ---
-        tools: {
-            exportGist: function() {
-                var self = WSP;
-                if (!self.state.activeFileId) return self.ui.notify('Abra um arquivo primeiro.', 'error');
-                self.ui.setLoading(true);
-                self.api(self.config.gistUrl, { file_id: self.state.activeFileId }, function(r) {
-                    self.ui.setLoading(false);
-                    if (r.success) window.open(r.url, '_blank');
-                });
-            },
-            purgeCache: function() {
-                var self = WSP;
-                self.api(self.config.purgeCacheUrl, {}, () => self.ui.notify("Cache limpo!", "success"));
-            }
-        },
-
-        // --- MÓDULO DE UI ---
-        ui: {
-            initModals: function() {
-                var $ = WSP.$;
-                $('.close-modal, #wsp-modal-cancel').off().on('click', () => $('.wsp-modal-overlay').fadeOut(150));
-            },
-            prompt: function(title, def, cb) {
-                var $ = WSP.$;
-                $('#wsp-modal-title').text(title);
-                $('#wsp-modal-input').val(def).show().focus();
-                $('#wsp-custom-modal').css('display', 'flex').hide().fadeIn(200);
-                $('#wsp-modal-ok').off().one('click', function() {
-                    var val = $('#wsp-modal-input').val();
-                    $('.wsp-modal-overlay').fadeOut(100);
-                    if (val) cb(val.trim());
-                });
-            },
-            setLoading: function(s) { WSP.$('#editor-loader').toggle(s); },
-            notify: function(m, t) { console.log("["+t+"] " + m); },
-            updateProjectDisplay: function(n) { WSP.$('#wsp-active-project-display span').text(n); },
-            updateActiveFileUI: function(id, n, t) {
-                var $ = WSP.$;
-                $('#current-file').html('<i class="fa fa-file-code-o"></i> ' + n);
-                $('.file-item').removeClass('active-file');
-                $(`.load-file[data-id="${id}"]`).closest('.file-item').addClass('active-file');
-            }
-        },
-
-        bindGlobalEvents: function() {
-            var self = this, $ = this.$;
-
-            // 1. ABA: ARQUIVO
-            $('body').off('click', '#btn-tb-new-project').on('click', '#btn-tb-new-project', () => self.project.create());
-            $('body').off('click', '#menu-open-project').on('click', '#menu-open-project', () => self.project.openModal());
-            $('body').off('click', '#btn-tb-save').on('click', '#btn-tb-save', (e) => { e.preventDefault(); self.file.save(); });
-            $('body').off('click', '#btn-tb-gist').on('click', '#btn-tb-gist', () => self.tools.exportGist());
-
-            // 2. ABA: PROJETO
-            $('body').off('click', '#btn-tb-new-folder').on('click', '#btn-tb-new-folder', function() {
-                self.ui.prompt(self.config.lang.prompt_file, "", (name) => {
-                    self.api(self.config.addFileUrl, { name: name, type: 'folder', project_id: self.state.activeProjectId }, () => self.project.loadSidebar(self.state.activeProjectId, name));
-                });
-            });
-
-            $('body').off('click', '#btn-tb-new-file').on('click', '#btn-tb-new-file', function() {
-                self.ui.prompt(self.config.lang.prompt_file, "novo_arquivo.php", (name) => {
-                    self.api(self.config.addFileUrl, { name: name, type: 'file', project_id: self.state.activeProjectId }, () => self.project.loadSidebar(self.state.activeProjectId, name));
-                });
-            });
-
-            $('body').off('click', '#btn-tb-download-zip').on('click', '#btn-tb-download-zip', function() {
-                if (!self.state.activeProjectId) return self.ui.notify('Selecione um projeto', 'error');
-                window.location.href = self.config.zipUrl + '&project_id=' + self.state.activeProjectId;
-            });
-
-            $('body').off('click', '#btn-tb-changelog').on('click', '#btn-tb-changelog', function() {
-                if (!self.state.activeProjectId) return self.ui.notify('Selecione um projeto', 'error');
-                self.ui.notify(self.config.lang.processing, "info");
-                self.api(self.config.changelogUrl, { project_id: self.state.activeProjectId }, (r) => self.ui.notify("Changelog pronto!", "success"));
-            });
-
-            // 3. ABA: FERRAMENTAS & VIEW
-            $('body').off('click', '#btn-tb-purge-cache').on('click', '#btn-tb-purge-cache', () => self.tools.purgeCache());
-            
-            $('body').off('click', '#btn-tb-fullscreen').on('click', '#btn-tb-fullscreen', function() {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.exitFullscreen) {
-                    document.exitFullscreen();
+                if (!hasFile) {
+                    if (this.editor) this.editor.setReadOnly(true);
+                    $saveBtn.hide();
+                    $bbcodeBtn.hide();
+                    // Não limpa o label aqui para não apagar o nome do projeto na sidebar
+                } else {
+                    if (this.editor) this.editor.setReadOnly(false);
                 }
-            });
-
-            // 4. MODAIS ESTÁTICOS (Unificados)
-            var staticModals = {
-                '#btn-tb-search': '#wsp-search-modal',
-                '#btn-tb-diff': '#wsp-diff-modal',
-                '#btn-tb-skeleton': '#wsp-skeleton-modal',
-                '#btn-tb-theme': '#wsp-theme-modal',
-                '#btn-tb-shortcuts': '#wsp-shortcuts-modal'
-            };
-
-            $.each(staticModals, function(btn, mod) {
-                $('body').off('click', btn).on('click', btn, function(e) {
-                    e.preventDefault();
-                    $(mod).css('display', 'flex').hide().fadeIn(200);
-                });
-            });
-
-            // 5. NAVEGAÇÃO E INTERFACE
-            $('body').off('click', '.load-file').on('click', '.load-file', (e) => self.file.open($(e.currentTarget).attr('data-id')));
-            
-            $('body').off('click', '#btn-toggle-log-menu, #btn-toggle-log').on('click', '#btn-toggle-log-menu, #btn-toggle-log', function() {
-                $('#wsp-log-console').toggleClass('expanded');
-            });
-
-            // Fechar modais (Esc e botões)
-            $('body').off('click', '.close-modal, #wsp-modal-cancel').on('click', '.close-modal, #wsp-modal-cancel', () => $('.wsp-modal-overlay').fadeOut(150));
-        },
-
-        api: function(url, data, cb, method = 'POST') {
-            this.$.ajax({
-                url: url,
-                type: method,
-                data: data,
-                dataType: 'json',
-                success: (r) => { 
-                    if(r.success) cb(r); 
-                    else this.ui.notify(r.error, 'error'); 
-                },
-                error: () => this.ui.notify("Erro na requisição (405 ou 500)", "error")
-            });
-        },
-
-        editor: {
-            instance: null,
-            init: function() {
-                if (typeof ace === 'undefined') return;
-                this.instance = ace.edit("editor");
-                this.instance.setTheme(WSP.state.currentTheme);
-                this.instance.setOptions({ fontSize: "14px", wrap: true });
             }
         }
     };
 
-})(window);
+})(window, jQuery);

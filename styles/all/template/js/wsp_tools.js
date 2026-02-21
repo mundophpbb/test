@@ -1,217 +1,196 @@
 /**
- * Mundo phpBB Workspace - TOOLS
- * Árvore de Ficheiros, CRUD de Projetos, Menus Dropdown e Carregamento Dinâmico
+ * Mundo phpBB Workspace - Tools (Diff, Search, Cache)
+ * Gerencia utilitários de busca, substituição, comparação e manutenção.
  */
-function initWspTools($) {
-    'use strict';
+WSP.tools = {
+    /**
+     * Vincula eventos das ferramentas
+     */
+    bindEvents: function ($) {
+        var self = this;
 
-    // --- FUNÇÃO: CARREGAR SIDEBAR (AJAX) ---
-    window.loadProjectSidebar = function(id, name) {
-        if (!id) return;
-        
-        window.activeProjectId = id;
-        window.showNotification(wspVars.lang.loading + " " + name, "info");
+        // Helper para verificar existência de elementos
+        var hasEl = function (sel) { return $(sel).length > 0; };
 
-        $.get(wspVars.mainUrl, { project_id: id }, function(data) {
-            var $tempDiv = $('<div>').html(data);
-            var newProjectListHtml = $tempDiv.find('#project-list').html();
+        /**
+         * 1. BUSCA E SUBSTITUIÇÃO
+         */
+        $('body').off('click', '.open-search-replace').on('click', '.open-search-replace', function () {
+            var projectId = WSP.activeProjectId;
 
-            if (!newProjectListHtml || newProjectListHtml.trim() === "") {
-                newProjectListHtml = '<div id="sidebar-empty-state" style="padding:20px;text-align:center;color:#888;">' + 
-                                     '<i class="fa fa-folder-open-o fa-2x"></i><p>Projeto vazio.</p></div>';
-            } else {
-                // Limpa o estado vazio se houver conteúdo
-                newProjectListHtml = newProjectListHtml.replace(/<div id="sidebar-empty-state"[\s\S]*?<\/div>/i, '');
+            if (!projectId) {
+                return WSP.ui.notify("Abra um projeto para usar a busca.", "warning");
             }
 
-            // Atualiza o container principal
-            $('#project-list').html(newProjectListHtml);
-
-            // Sincroniza estado global e renderiza árvore
-            if (typeof window.recoverActiveProjectId === 'function') {
-                window.recoverActiveProjectId();
+            if (!hasEl('#search-replace-modal')) {
+                return WSP.ui.notify("Erro: Interface de busca não carregada.", "error");
             }
-            
-            window.renderTree();
 
-            // Re-bind imediato dos botões da toolbar (Novo Arquivo, Delete, etc)
-            setTimeout(function() {
-                if (typeof window.rebindProjectActions === 'function') {
-                    window.rebindProjectActions();
-                }
-            }, 50);
+            // Limpa campos antes de abrir
+            $('#wsp-search-term').val('');
+            $('#wsp-replace-term').val('');
+            $('#search-project-id').val(projectId);
 
-            // UI Updates
-            $('.project-actions').fadeIn();
-            $('#current-file').html('<i class="fa fa-cube"></i> ' + name).css('color', '#e2c08d');
-            
-            console.log('%cSidebar Renderizada - ID:', 'color: #28a745', id);
-        }).fail(function() {
-            window.showNotification('Erro ao carregar projeto.', 'error');
+            $('#search-replace-modal').css('z-index', '100005').fadeIn(200);
         });
-    };
 
-    // --- FUNÇÃO: RENDERIZAÇÃO DA ÁRVORE ---
-    window.renderTree = function() {
-        $('.project-group').each(function() {
-            var $fileList = $(this).find('.file-list');
-            var files = [];
-
-            // Captura arquivos brutos do HTML (gerados pelo PHP)
-            $fileList.find('.file-item').each(function() {
-                var $el = $(this);
-                var $link = $el.find('.load-file');
-                var fileName = $link.text().trim();
-                
-                files.push({
-                    id: $link.attr('data-id'),
-                    name: fileName,
-                    type: $link.attr('data-type') || 'file',
-                    html: $el[0].outerHTML
-                });
-            });
-
-            // Se não houver caminhos com "/" (projeto plano), apenas limpa e sai
-            if (!files.some(f => f.name.includes('/'))) {
-                files.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-                $fileList.html(files.map(f => f.html).join(''));
-                return;
-            }
-
-            // Constroi objeto de estrutura aninhada
-            var structure = {};
-            files.forEach(file => {
-                var parts = file.name.split('/').filter(p => p !== '');
-                var current = structure;
-
-                for (var i = 0; i < parts.length; i++) {
-                    var part = parts[i];
-                    var isLast = (i === parts.length - 1);
-                    var isFolderType = file.type === 'folder' || file.name.endsWith('/');
-
-                    if (!current[part]) {
-                        current[part] = { _isDir: (isLast ? isFolderType : true), _children: {} };
-                    }
-
-                    if (isLast && !isFolderType) {
-                        current[part] = { ...file, _isDir: false };
-                    } else {
-                        current = current[part]._children;
-                    }
-                }
-            });
-
-            // Função recursiva para montar o HTML final
-            var buildHtml = function(obj, level = 0) {
-                var html = '';
-                var keys = Object.keys(obj).sort((a, b) => {
-                    var aIsDir = obj[a]._isDir;
-                    var bIsDir = obj[b]._isDir;
-                    if (aIsDir !== bIsDir) return bIsDir - aIsDir; // Pastas primeiro
-                    return a.localeCompare(b, undefined, { sensitivity: 'base' });
-                });
-
-                keys.forEach(key => {
-                    var item = obj[key];
-                    if (item._isDir) {
-                        html += '<li class="folder-item" style="padding-left: ' + (level ? 15 : 0) + 'px;">' +
-                                '<div class="folder-title"><i class="fa fa-folder fa-fw icon"></i> ' + key + '</div>' +
-                                '<ul class="folder-content" style="display:none;">' + buildHtml(item._children || {}, level + 1) + '</ul></li>';
-                    } else {
-                        // Aplica ícones baseados na extensão
-                        var icon = 'fa-file-text-o';
-                        var ext = item.name.split('.').pop().toLowerCase();
-                        
-                        if (['php', 'inc', 'module'].includes(ext)) icon = 'fa-file-code-o';
-                        else if (['js', 'ts', 'json'].includes(ext)) icon = 'fa-file-code-o';
-                        else if (['css', 'scss', 'less'].includes(ext)) icon = 'fa-file-code-o';
-                        else if (['yaml', 'yml', 'xml'].includes(ext)) icon = 'fa-file-text-o';
-                        else if (ext === 'md') icon = 'fa-info-circle';
-                        
-                        var fileHtml = item.html.replace(/<i class="fa [^"]*"><\/i>/, '<i class="fa ' + icon + '"></i>');
-                        html += '<div class="tree-file-wrapper" style="padding-left: ' + (level ? 15 : 0) + 'px;">' + fileHtml + '</div>';
-                    }
-                });
-                return html;
+        // Executar Substituição
+        $('body').off('click', '#exec-replace-btn').on('click', '#exec-replace-btn', function () {
+            var $btn = $(this);
+            var projectId = $('#search-project-id').val() || WSP.activeProjectId;
+            
+            var data = {
+                project_id: projectId,
+                file_id: WSP.activeFileId || 0, // 0 = Projeto Inteiro
+                search: $('#wsp-search-term').val(),
+                replace: $('#wsp-replace-term').val()
             };
 
-            $fileList.html(buildHtml(structure));
+            if (!data.search) {
+                return WSP.ui.notify("Digite o termo que deseja procurar.", "warning");
+            }
+
+            WSP.ui.confirm("Isso alterará o conteúdo dos arquivos no banco de dados. Confirmar?", function () {
+                $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processando...');
+
+                $.post(wspVars.replaceUrl, data, function (r) {
+                    if (r && r.success) {
+                        WSP.ui.notify("Substituição concluída: " + r.updated + " arquivos alterados.");
+                        
+                        // Limpa backups locais para evitar conflitos com a nova versão do banco
+                        self._clearBackups(data.file_id);
+
+                        $('#search-replace-modal').hide();
+                        WSP.ui.seamlessRefresh();
+
+                        // Se o arquivo aberto foi alterado, recarrega ele no editor
+                        if (WSP.activeFileId) {
+                            $('.active-file .load-file').click();
+                        }
+                    } else {
+                        WSP.ui.notify(r.error || "Erro na substituição.", "error");
+                    }
+                }, 'json').always(function() {
+                    $btn.prop('disabled', false).text("Substituir");
+                });
+            });
         });
 
-        // Evento de abrir/fechar pasta (delegado)
-        $('body').off('click', '.folder-title').on('click', '.folder-title', function(e) {
-            e.stopPropagation();
-            var $icon = $(this).find('.icon');
-            $(this).next('.folder-content').slideToggle(150);
-            $icon.toggleClass('fa-folder fa-folder-open');
-        });
-    };
+        /**
+         * 2. FERRAMENTA DE DIFERENÇA (DIFF / COMPARAR)
+         * Corrigido para ler caminhos na nova Tree
+         */
+        $('body').off('click', '#open-diff-tool').on('click', '#open-diff-tool', function () {
+            if (!WSP.activeProjectId) {
+                return WSP.ui.notify("Selecione um projeto primeiro.", "info");
+            }
 
-    // --- MODAL: NOVO PROJETO ---
-    $('body').off('click', '#menu-new-project').on('click', '#menu-new-project', function() {
-        window.wspPrompt(wspVars.lang.prompt_name, '', function(name) {
-            $.post(wspVars.addUrl, { name: name }, function(r) {
-                if(r.success) {
-                    window.showNotification("Projeto Criado!", "success");
-                    window.loadProjectSidebar(r.id, r.name);
+            var $orig = $('#diff-original').empty();
+            var $mod = $('#diff-modified').empty();
+            var foundFiles = 0;
+
+            // Popula os selects usando os arquivos visíveis na sidebar
+            $('.load-file').each(function () {
+                var $a = $(this);
+                var id = $a.data('id');
+                var path = $a.attr('data-path') || $a.text();
+
+                // Ignora marcadores de pasta
+                if (path.indexOf('.placeholder') !== -1) return;
+
+                $orig.append($('<option>').val(id).text(path));
+                $mod.append($('<option>').val(id).text(path));
+                foundFiles++;
+            });
+
+            if (foundFiles < 2) {
+                return WSP.ui.notify("Você precisa de pelo menos 2 arquivos no projeto para comparar.", "info");
+            }
+
+            $('#diff-modal').css('z-index', '100006').fadeIn(200);
+        });
+
+        // Gerar o Diff Visual
+        $('body').off('click', '#generate-diff-btn').on('click', '#generate-diff-btn', function () {
+            var $btn = $(this);
+            var data = {
+                original_id: $('#diff-original').val(),
+                modified_id: $('#diff-modified').val(),
+                filename: $('#diff-original option:selected').text()
+            };
+
+            if (data.original_id === data.modified_id) {
+                return WSP.ui.notify("Escolha arquivos diferentes para comparar.", "warning");
+            }
+
+            $btn.prop('disabled', true).text("Comparando...");
+
+            $.post(wspVars.diffUrl, data, function (r) {
+                if (r && r.success) {
+                    $('#diff-modal').hide();
+
+                    // Desativa o salvamento para o Diff (ele é apenas visual)
+                    WSP.activeFileId = null;
+                    
+                    if (WSP.editor) {
+                        WSP.editor.setReadOnly(false);
+                        WSP.editor.session.setMode("ace/mode/diff");
+                        WSP.editor.setValue(r.bbcode || '', -1);
+                        WSP.editor.focus();
+                    }
+
+                    $('#copy-bbcode').fadeIn(300);
+                    $('#save-file').hide();
+                    $('#current-file').html('<i class="fa fa-columns"></i> Diff: ' + data.filename);
                 } else {
-                    window.showNotification(r.error, 'error');
+                    WSP.ui.notify(r.error || "Erro ao gerar comparação.", "error");
+                }
+            }, 'json').always(function() {
+                $btn.prop('disabled', false).text("Gerar Comparação");
+            });
+        });
+
+        /**
+         * 3. LIMPEZA DE CACHE DO FORUM
+         */
+        $('body').off('click', '#refresh-phpbb-cache').on('click', '#refresh-phpbb-cache', function () {
+            var $btn = $(this);
+            var $icon = $btn.find('i').addClass('fa-spin');
+            $btn.css('pointer-events', 'none');
+
+            $.post(wspVars.refreshCacheUrl, function (r) {
+                if (r && r.success) {
+                    WSP.ui.notify("Cache do phpBB limpo com sucesso!");
+                    setTimeout(function() { window.location.reload(true); }, 1000);
+                } else {
+                    WSP.ui.notify("Erro ao limpar cache.", "error");
+                    $icon.removeClass('fa-spin');
+                    $btn.css('pointer-events', 'auto');
                 }
             }, 'json');
         });
-    });
 
-    // --- MODAL: ABRIR PROJETO ---
-    $('body').off('click', '#menu-open-project').on('click', '#menu-open-project', function() {
-        $('#project-list-select').html('<div style="text-align:center;padding:20px;"><i class="fa fa-refresh fa-spin fa-2x"></i></div>');
-        $('#open-project-modal').css('display', 'flex').hide().fadeIn(200);
-
-        $.get(wspVars.mainUrl, function(data) {
-            var $projects = $(data).find('.project-card-hidden'); // O PHP deve gerar cards invisíveis para o modal
-            $('#project-list-select').empty();
-
-            if ($projects.length === 0) {
-                $('#project-list-select').html('<p style="padding:20px; color:#888;">Nenhum projeto encontrado.</p>');
-            } else {
-                $projects.each(function() {
-                    $('#project-list-select').append(
-                        '<div class="project-card" data-id="'+$(this).attr('data-id')+'">' +
-                        '<i class="fa fa-folder"></i> <span>'+$(this).attr('data-name')+'</span></div>'
-                    );
-                });
+        /**
+         * 4. FECHAMENTO DE MODAIS (Esc)
+         */
+        $(document).off('keydown.wsp_tools').on('keydown.wsp_tools', function (e) {
+            if (e.key === "Escape") {
+                $('#search-replace-modal, #diff-modal').fadeOut(150);
             }
         });
-    });
+    },
 
-    $('body').off('click', '.project-card').on('click', '.project-card', function() {
-        var id = $(this).attr('data-id');
-        var name = $(this).find('span').text();
-        $('#open-project-modal').fadeOut(200);
-        window.loadProjectSidebar(id, name);
-    });
-
-    // --- FERRAMENTA: FILTRO DA SIDEBAR ---
-    $('body').on('input', '#wsp-sidebar-filter', function() {
-        var term = $(this).val().toLowerCase();
-        
-        $('.file-item').each(function() {
-            var fileName = $(this).text().toLowerCase();
-            if (fileName.indexOf(term) > -1) {
-                $(this).show();
-                // Expande as pastas pais se houver match
-                $(this).parents('.folder-content').show().prev('.folder-title').find('.icon').removeClass('fa-folder').addClass('fa-folder-open');
-            } else {
-                $(this).hide();
-            }
-        });
-
-        // Esconde pastas vazias após o filtro
-        $('.folder-item').each(function() {
-            var hasVisibleChildren = $(this).find('.file-item:visible').length > 0;
-            $(this).toggle(hasVisibleChildren);
-        });
-    });
-
-    // Inicialização automática
-    window.renderTree();
-}
+    /**
+     * Helper para limpar backups do localStorage
+     */
+    _clearBackups: function(fileId) {
+        if (!fileId || fileId === 0) {
+            // Limpa tudo que for do Workspace
+            Object.keys(localStorage).forEach(function (key) {
+                if (key.indexOf('wsp_backup_') === 0) localStorage.removeItem(key);
+            });
+        } else {
+            localStorage.removeItem('wsp_backup_' + fileId);
+        }
+    }
+};
