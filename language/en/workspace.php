@@ -63,6 +63,8 @@ $lang = array_merge($lang, array(
     'WSP_EMPTY_PROJECT'         => 'Empty project',
     'WSP_EMPTY_PROJECT_DESC'    => 'This project does not have any files yet.',
     'WSP_DRAG_UPLOAD_HINT'      => 'Drag folders here or use the upload button.',
+    'WSP_RENAME_PROJECT'        => 'Rename Project',
+    'WSP_DOWNLOAD_PROJECT'      => 'Download ZIP',
 
     // =====================================================
     // Files and Folders
@@ -151,5 +153,4 @@ $lang = array_merge($lang, array(
     'WSP_ERR_SERVER_500'        => "Internal server error.\nCheck the Diff library.",
     'WSP_ERR_COMM'              => 'Communication error with the server.',
     'WSP_ERR_COPY'              => 'Error while copying.',
-
 ));
