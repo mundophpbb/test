@@ -1,22 +1,22 @@
 # Mundo phpBB Workspace
 
-Extens√£o colaborativa para phpBB que transforma o f√≥rum em um **reposit√≥rio de projetos e c√≥digos**, armazenados diretamente no banco de dados e edit√°veis pelo navegador.
+Extens„o colaborativa para phpBB que transforma o fÛrum em um **repositÛrio de projetos e cÛdigos**, armazenados diretamente no banco de dados e edit·veis pelo navegador.
 
 ---
 
-## ?? O que √© o Workspace
+## ?? O que È o Workspace
 
-O **Mundo phpBB Workspace** √© uma IDE leve integrada ao phpBB, criada para:
+O **Mundo phpBB Workspace** È uma IDE leve integrada ao phpBB, criada para:
 
-* organizar projetos de c√≥digo dentro do f√≥rum
+* organizar projetos de cÛdigo dentro do fÛrum
 * editar arquivos rapidamente
-* compartilhar projetos com outros usu√°rios
-* controlar permiss√µes individuais e por grupo
+* compartilhar projetos com outros usu·rios
+* controlar permissıes individuais e por grupo
 * gerar diffs e changelogs
-* permitir colabora√ß√£o entre membros
+* permitir colaboraÁ„o entre membros
 
-N√£o √© um VSCode nem substitui Git.
-O objetivo √© **centralizar desenvolvimento e colabora√ß√£o dentro da comunidade phpBB**.
+N„o È um VSCode nem substitui Git.
+O objetivo È **centralizar desenvolvimento e colaboraÁ„o dentro da comunidade phpBB**.
 
 ---
 
@@ -24,27 +24,27 @@ O objetivo √© **centralizar desenvolvimento e colabora√ß√£o dentro da comunidade
 
 Uso ideal para:
 
-* desenvolvimento de extens√µes phpBB
+* desenvolvimento de extensıes phpBB
 * bibliotecas internas
 * snippets e scripts
-* colabora√ß√£o entre membros do f√≥rum
-* reposit√≥rio de c√≥digo da comunidade
+* colaboraÁ„o entre membros do fÛrum
+* repositÛrio de cÛdigo da comunidade
 
 Funcionalidades principais:
 
-* cria√ß√£o de projetos
+* criaÁ„o de projetos
 * armazenamento de arquivos no banco
-* edi√ß√£o de c√≥digo via navegador (Ace Editor)
+* ediÁ„o de cÛdigo via navegador (Ace Editor)
 * upload de arquivos e pastas
 * drag & drop
-* gera√ß√£o de changelog
+* geraÁ„o de changelog
 * ferramenta de diff
 * download em ZIP
-* permiss√µes avan√ßadas
+* permissıes avanÁadas
 
 ---
 
-## ?? Estrutura da extens√£o
+## ?? Estrutura da extens„o
 
 ### Banco de dados
 
@@ -57,9 +57,9 @@ Tabelas principais:
 
 Recursos suportados:
 
-* projetos multiusu√°rio
+* projetos multiusu·rio
 * lock de projeto
-* permiss√µes por usu√°rio e grupo
+* permissıes por usu·rio e grupo
 * roles (owner/dev/viewer)
 * arquivos armazenados no banco
 
@@ -68,24 +68,24 @@ Recursos suportados:
 ## ?? Interface
 
 * Explorer lateral estilo IDE
-* Editor de c√≥digo (Ace)
-* Toolbar com a√ß√µes r√°pidas
+* Editor de cÛdigo (Ace)
+* Toolbar com aÁıes r·pidas
 * Drag & drop de arquivos e pastas
 * Indicador de pasta ativa
-* Breadcrumb de navega√ß√£o
+* Breadcrumb de navegaÁ„o
 * Modais de busca, replace e diff
 
 ---
 
-## ?? Sistema de permiss√µes
+## ?? Sistema de permissıes
 
-A extens√£o possui tr√™s camadas de seguran√ßa.
+A extens„o possui trÍs camadas de seguranÁa.
 
 ### 1) ACL global do phpBB
 
-Controla acesso √† IDE.
+Controla acesso ‡ IDE.
 
-Permiss√µes:
+Permissıes:
 
 * `u_workspace_access`
 * `u_workspace_create`
@@ -95,9 +95,9 @@ Permiss√µes:
 
 ---
 
-### 2) Permiss√µes por projeto
+### 2) Permissıes por projeto
 
-Roles dispon√≠veis:
+Roles disponÌveis:
 
 * **owner**
 * **dev**
@@ -111,15 +111,15 @@ Roles dispon√≠veis:
 
 ---
 
-### 3) Permiss√µes granulares
+### 3) Permissıes granulares
 
 Tabela `workspace_permissions` permite:
 
-* liberar usu√°rio espec√≠fico
+* liberar usu·rio especÌfico
 * liberar grupo
 * definir flags independentes
 
-Flags dispon√≠veis:
+Flags disponÌveis:
 
 * `can_view`
 * `can_edit`
@@ -127,11 +127,11 @@ Flags dispon√≠veis:
 * `can_delete`
 * `can_lock`
 
-Permite cen√°rios como:
+Permite cen·rios como:
 
 * projeto somente leitura
-* colabora√ß√£o parcial
-* equipe espec√≠fica
+* colaboraÁ„o parcial
+* equipe especÌfica
 * projeto travado
 
 ---
@@ -140,12 +140,12 @@ Permite cen√°rios como:
 
 Projetos podem ser bloqueados para:
 
-* evitar edi√ß√£o simult√¢nea
-* revis√£o ou deploy
+* evitar ediÁ„o simult‚nea
+* revis„o ou deploy
 
 Registro:
 
-* usu√°rio que travou
+* usu·rio que travou
 * data e hora
 
 ---
@@ -154,55 +154,55 @@ Registro:
 
 Suporte a:
 
-* m√∫ltiplos arquivos
+* m˙ltiplos arquivos
 * pastas completas
 * drag & drop
-* cria√ß√£o autom√°tica de `.placeholder` para manter estrutura
+* criaÁ„o autom·tica de `.placeholder` para manter estrutura
 * envio direto para pasta ativa
 
 ---
 
-## ?? Changelog autom√°tico
+## ?? Changelog autom·tico
 
-* registro de altera√ß√µes
-* gera√ß√£o de hist√≥rico
+* registro de alteraÁıes
+* geraÁ„o de histÛrico
 * limpeza de changelog
-* exporta√ß√£o para f√≥rum
-* integra√ß√£o com diff
+* exportaÁ„o para fÛrum
+* integraÁ„o com diff
 
 ---
 
 ## ?? Diff integrado
 
-Compara√ß√£o entre:
+ComparaÁ„o entre:
 
-* vers√µes de arquivos
+* versıes de arquivos
 * arquivos diferentes do projeto
 
-Sa√≠das:
+SaÌdas:
 
 * visual
-* BBCode pronto para o f√≥rum
+* BBCode pronto para o fÛrum
 
 ---
 
-## ?? Seguran√ßa
+## ?? SeguranÁa
 
 Inclui:
 
-* valida√ß√£o de extens√£o
-* sanitiza√ß√£o de paths
+* validaÁ„o de extens„o
+* sanitizaÁ„o de paths
 * bloqueio de `../`
 * ACL phpBB
-* permiss√µes por projeto
-* permiss√µes individuais
+* permissıes por projeto
+* permissıes individuais
 
 ---
 
-## ?? P√∫blico-alvo
+## ?? P˙blico-alvo
 
 * desenvolvedores phpBB
-* comunidades t√©cnicas
+* comunidades tÈcnicas
 * equipes de modding
 * projetos colaborativos
 
@@ -210,7 +210,7 @@ Inclui:
 
 ## ?? Filosofia do projeto
 
-O Workspace n√£o tenta substituir:
+O Workspace n„o tenta substituir:
 
 * VSCode
 * Git
@@ -218,20 +218,20 @@ O Workspace n√£o tenta substituir:
 
 Ele resolve outro problema:
 
-> Centralizar c√≥digo e colabora√ß√£o dentro do f√≥rum phpBB.
+> Centralizar cÛdigo e colaboraÁ„o dentro do fÛrum phpBB.
 
 ---
 
 ## ?? Roadmap
 
-Poss√≠veis evolu√ß√µes:
+PossÌveis evoluÁıes:
 
 * versionamento real de arquivos
 * rollback
-* integra√ß√£o com Git
-* permiss√µes por pasta
-* coment√°rios em c√≥digo
-* revis√£o colaborativa
+* integraÁ„o com Git
+* permissıes por pasta
+* coment·rios em cÛdigo
+* revis„o colaborativa
 
 ---
 
@@ -240,19 +240,19 @@ Poss√≠veis evolu√ß√µes:
 ? Estrutura de projetos
 ? Editor integrado
 ? Upload e drag & drop
-? Permiss√µes multi-camada
+? Permissıes multi-camada
 ? Diff e changelog
-? Colabora√ß√£o b√°sica
+? ColaboraÁ„o b·sica
 
-Em evolu√ß√£o cont√≠nua.
+Em evoluÁ„o contÌnua.
 
 ---
 
-## ? Informa√ß√µes
+## ? InformaÁıes
 
 **Nome:** Mundo phpBB Workspace
 **Autor:** mundophpbb
-**Licen√ßa:** GPL
+**LicenÁa:** GPL
 **Compatibilidade:** phpBB 3.3+
 
 ---
@@ -265,7 +265,7 @@ Em evolu√ß√£o cont√≠nua.
 * Estrutura de projetos no banco
 * Editor Ace
 * Upload de arquivos e pastas
-* Sistema de permiss√µes
+* Sistema de permissıes
 * Roles por projeto
 * Lock de projeto
 * Diff e changelog
